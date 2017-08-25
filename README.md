@@ -1,26 +1,31 @@
+
 # Culebra
 
-Culebra is a Yaml serialization library for Kotlin. It is built using
-the [snakeyaml] library. 
+Culebra is a Yaml serialization library for Kotlin built using
+the [snakeyaml] library. It provides a flexible interface for
+serializing Kotlin values to and from Yaml with the help of the
+Applicative / Monadic parsing style. This library is heavily
+influenced by [aeson] and pure functional programming methods. 
 
-optparse-applicative takes care of reading and validating the
-arguments passed to the command line, handling and reporting errors,
-generating a usage line, a comprehensive help screen, and enabling
-context-sensitive bash completions.
+With Culebra you are not limited to using DTOs. You can design both
+the structure of your Yaml files and your Kotlin data types however
+you like and serialize directly between the two. The tradeoff is that
+you have to write the functions yourself. But it's not that hard, and
+if they typecheck, they should behave predictably.
 
 **Table of Contents**
 
 - [Introduction](#introduction)
 - [Parsing](#parsing)
-  - [Basic Types](#parsing-basic-types)
-  - [Sum Types](#parsing-optional-types)
-  - [Optional Types](#parsing-optional-types)
-  - [Nested Types](#parsing-nested-types)
+  - [Basic Types](#basic-types)
+  - [Sum Types](#sum-types)
+  - [Optional Types](#optional-types)
+  - [Nested Types](#nested-types)
 - [Encoding](#encoding)
-  - [Basic Types](#encoding-basic-types)
-  - [Sum Types](#encoding-optional-types)
-  - [Optional Types](#encoding-optional-types)
-  - [Nested Types](#encoding-nested-types)
+  - [Basic Types](#basic-types-1)
+  - [Sum Types](#sum-types-1)
+  - [Optional Types](#optional-types-1)
+  - [Nested Types](#nested-types-1)
 
 ## Introduction
 
@@ -40,3 +45,4 @@ context-sensitive bash completions.
 
 
 [snakeyaml]: https://bitbucket.org/asomov/snakeyaml
+[aeson]: http://hackage.haskell.org/package/aeson
