@@ -1,6 +1,8 @@
 
 package data.rpg
 
+import com.kispoko.culebra.ToYaml
+import com.kispoko.culebra.YamlValue
 import effect.Maybe
 
 
@@ -22,7 +24,12 @@ enum class CharacterType {
     WIZARD
 }
 
-sealed class Character
+sealed class Character : ToYaml
+{
+
+    override fun toYaml() : YamlValue = encodeCharacter(this)
+
+}
 
 data class CharacterData(val languages : List<String>,
                          val scores : AbilityScores,
@@ -30,7 +37,7 @@ data class CharacterData(val languages : List<String>,
 
 
 data class Fighter(val data : CharacterData,
-                   val spells : List<Feat>) : Character()
+                   val feats : List<Feat>) : Character()
 
 
 data class Wizard(val data : CharacterData,

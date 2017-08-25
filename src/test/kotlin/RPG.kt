@@ -1,4 +1,5 @@
 
+import com.kispoko.culebra.encodeYaml
 import com.kispoko.culebra.parseYaml
 import data.rpg.parseCharacter
 import data.rpg.wizardCharacter
@@ -26,6 +27,16 @@ class RPG : StringSpec()
             }
         }
 
+
+        "Encode the wizard object into YAML and the parse it. It should be the same." {
+
+            val wizardYamlString = encodeYaml(wizardCharacter)
+
+            val wizard = parseYaml(wizardYamlString, ::parseCharacter, false)
+            when (wizard) {
+                is Val -> wizard.value shouldBe wizardCharacter
+            }
+        }
     }
 
 }

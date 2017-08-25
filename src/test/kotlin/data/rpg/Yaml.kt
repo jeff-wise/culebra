@@ -3,10 +3,7 @@ package data.rpg
 
 
 import com.kispoko.culebra.*
-import effect.effApply
-import effect.effError
-import effect.effValue
-import effect.mapM
+import effect.*
 
 
 // ---------------------------------------------------------------------------------------------
@@ -56,11 +53,11 @@ fun parseCharacterData(yamlValue : YamlValue) : YamlParser<CharacterData> = when
 {
     is YamlDict -> effApply(::CharacterData,
                             yamlValue.valueList("spoken_languages") ap {
-                                    it.mapM { parseLanguage(it) }
+                                    it.mapMI { parseLanguage(it) }
                             },
                             yamlValue.at("ability_scores") ap ::parseAbilityScores,
                             yamlValue.valueList("items") ap {
-                                it.mapM { parseItem(it) }
+                                it.mapMI { parseItem(it) }
                             } )
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
@@ -72,7 +69,7 @@ fun parseFighter(yamlValue : YamlValue) : YamlParser<Character> = when (yamlValu
 {
     is YamlDict -> effApply(::Fighter,
                             parseCharacterData(yamlValue),
-                            yamlValue.valueList("feats") ap { it.mapM { parseFeat(it) } } )
+                            yamlValue.valueList("feats") ap { it.mapMI { parseFeat(it) } } )
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -84,7 +81,7 @@ fun parseWizard(yamlValue : YamlValue) : YamlParser<Character> = when (yamlValue
 {
     is YamlDict -> effApply(::Wizard,
                             parseCharacterData(yamlValue),
-                            yamlValue.valueList("spells") ap { it.mapM { parseSpell(it) } } )
+                            yamlValue.valueList("spells") ap { it.mapMI { parseSpell(it) } } )
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -136,19 +133,7 @@ fun parseSpell(yamlValue : YamlValue) : YamlParser<Spell> = when (yamlValue)
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
-// Spells
-// ---------------------------------------------------------------------------------------------
-
-//fun parseSpells(yamlValue : YamlValue) : YamlParser<List<Spell>> = when (yamlValue)
-//{
-//    is YamlArray -> yamlValue.map { parseSpell(it) }
-//    else         -> error(UnexpectedTypeFound(YamlType.ARRAY, yamlType(yamlValue)))
-//}
-
 // FEAT
-// ---------------------------------------------------------------------------------------------
-
-// Feat
 // ---------------------------------------------------------------------------------------------
 
 fun parseFeat(yamlValue : YamlValue) : YamlParser<Feat> = when (yamlValue)
@@ -160,16 +145,6 @@ fun parseFeat(yamlValue : YamlValue) : YamlParser<Feat> = when (yamlValue)
     }
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
-
-// Feats
-// ---------------------------------------------------------------------------------------------
-
-//fun parseFeats(yamlValue : YamlValue) : YamlParser<List<Feat>> = when (yamlValue)
-//{
-//    is YamlArray -> yamlValue.map { parseFeat(it) }
-//    else         -> error(UnexpectedTypeFound(YamlType.ARRAY, yamlType(yamlValue)))
-//}
-
 
 // ITEM
 // ---------------------------------------------------------------------------------------------
@@ -190,14 +165,6 @@ fun parseItem(yamlValue : YamlValue) : YamlParser<Item> = when (yamlValue)
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
-// Item List
-// ---------------------------------------------------------------------------------------------
-
-//fun parseItems(yamlValue : YamlValue) : YamlParser<List<Item>> = when (yamlValue)
-//{
-//    is YamlArray -> yamlValue.map { parseItem(it) }
-//    else         -> error(UnexpectedTypeFound(YamlType.ARRAY, yamlType(yamlValue), yamlValue.path))
-//}
 
 // Item Type
 // ---------------------------------------------------------------------------------------------
@@ -228,7 +195,6 @@ fun parseRing(yamlValue : YamlValue) : YamlParser<Item> = when (yamlValue)
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
-
 // Item > Weapon
 // ---------------------------------------------------------------------------------------------
 
@@ -242,3 +208,142 @@ fun parseWeapon(yamlValue : YamlValue) : YamlParser<Item> = when (yamlValue)
     }
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
+
+
+// ---------------------------------------------------------------------------------------------
+// *****                                      ENCODERS                                     *****
+// ---------------------------------------------------------------------------------------------
+
+// CHARACTER
+// ---------------------------------------------------------------------------------------------
+
+// Character
+// ---------------------------------------------------------------------------------------------
+
+fun encodeCharacter(character : Character) : YamlValue = when (character)
+{
+    is Fighter -> {
+        YamlDict(
+            hashMapOf("character_type" to YamlText("fighter"),
+                      "character"      to encodeFigher(character)))
+    }
+    is Wizard -> {
+        YamlDict(
+            hashMapOf("character_type" to YamlText("wizard"),
+                      "character"      to encodeWizard(character)))
+    }
+}
+
+// Character > Fighter
+// ---------------------------------------------------------------------------------------------
+
+fun encodeFigher(fighter : Fighter) : YamlValue
+{
+    val featValues = fighter.feats.map { encodeFeat(it) }
+
+    return YamlDict(hashMapOf("feats" to YamlArray(featValues)))
+               .union(encodeCharacterData(fighter.data))
+}
+
+
+// Character > Wizard
+// ---------------------------------------------------------------------------------------------
+
+fun encodeWizard(wizard : Wizard) : YamlValue
+{
+    val spellValues = wizard.spells.map { encodeSpell(it) }
+
+    return YamlDict(hashMapOf("spells" to YamlArray(spellValues)))
+               .union(encodeCharacterData(wizard.data))
+}
+
+// Character > Shared Data
+// ---------------------------------------------------------------------------------------------
+
+fun encodeCharacterData(characterData : CharacterData) : YamlDict
+{
+    val languageValues = characterData.languages.map { encodeLanguage(it) }
+    val itemValues = characterData.items.map { encodeItem(it) }
+
+    return YamlDict(
+               hashMapOf("spoken_languages" to YamlArray(languageValues),
+                         "ability_scores"   to encodeAbilityScores(characterData.scores),
+                         "items"            to YamlArray(itemValues)))
+}
+
+
+// ABILITY SCORES
+// ---------------------------------------------------------------------------------------------
+
+fun encodeAbilityScores(abilityScores : AbilityScores) : YamlDict =
+    YamlDict(
+        hashMapOf("str" to YamlInteger(abilityScores.str),
+                  "dex" to YamlInteger(abilityScores.dex),
+                  "con" to YamlInteger(abilityScores.con),
+                  "int" to YamlInteger(abilityScores.int),
+                  "wis" to YamlInteger(abilityScores.wis),
+                  "cha" to YamlInteger(abilityScores.cha)))
+
+
+// LANGUAGE
+// ---------------------------------------------------------------------------------------------
+
+fun encodeLanguage(language : String) : YamlValue = YamlText(language)
+
+
+// ITEM
+// ---------------------------------------------------------------------------------------------
+
+fun encodeItem(item : Item) : YamlValue = when (item)
+{
+    is Weapon -> {
+        YamlDict(
+            hashMapOf("type" to YamlText("weapon"),
+                      "item" to encodeWeapon(item)))
+    }
+    is Ring -> {
+        YamlDict(
+            hashMapOf("type" to YamlText("ring"),
+                      "item" to encodeRing(item)))
+    }
+}
+
+// Item > Weapon
+// ---------------------------------------------------------------------------------------------
+
+fun encodeWeapon(weapon : Weapon) : YamlValue =
+    YamlDict(
+        hashMapOf("name"   to YamlText(weapon.name),
+                  "damage" to YamlText(weapon.damage),
+                  "weight" to YamlFloat(weapon.weight)))
+
+// Item > Ring
+// ---------------------------------------------------------------------------------------------
+
+fun encodeRing(ring : Ring) : YamlValue =
+    YamlDict(
+        hashMapOf("name"        to YamlText(ring.name),
+                  "description" to YamlText(ring.description)))
+
+
+// SPELL
+// ---------------------------------------------------------------------------------------------
+
+fun encodeSpell(spell : Spell) : YamlValue =
+    YamlDict(hashMapOf("name"  to YamlText(spell.name),
+                       "level" to YamlInteger(spell.level)))
+    .maybeUnion(spell.description apply {
+        Just(YamlDict(hashMapOf("description" to YamlText(it))))
+    })
+    .maybeUnion(spell.damage apply {
+        Just(YamlDict(hashMapOf("damage" to YamlText(it))))
+    })
+
+
+// FEAT
+// ---------------------------------------------------------------------------------------------
+
+fun encodeFeat(feat : Feat) : YamlValue =
+    YamlDict(
+        hashMapOf("name"  to YamlText(feat.name),
+                  "bonus" to YamlInteger(feat.bonus)))

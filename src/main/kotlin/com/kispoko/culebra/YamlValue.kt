@@ -13,18 +13,55 @@ import java.util.HashMap
 // ---------------------------------------------------------------------------------------------
 
 sealed class YamlValue(open val path : ValuePath?)
+{
 
-// put parse methods here?
+    //@Suppress("UNCHECKED_CAST")
+    fun toPojo() : Any = when (this)
+    {
+        is YamlDict ->
+        {
+            val hm = hashMapOf<String,Any>()
+            this.map.forEach { key, yamlValue ->
+                hm.put(key, yamlValue.toPojo())
+            }
+            hm
+        }
+        is YamlArray -> {
+            val arrayList = arrayListOf<Any>()
+            this.list.forEach { arrayList.add(it.toPojo()) }
+            arrayList
+        }
+        is YamlText -> this.text
+        is YamlInteger -> this.number
+        is YamlFloat -> this.number
+        is YamlBool -> this.bool
+        is YamlNull -> "null"
+    }
 
+}
 
 
 // Yaml Value > Dictionary
 // ---------------------------------------------------------------------------------------------
 
-data class YamlDict(private val map : HashMap<String,YamlValue>,
+data class YamlDict(val map : HashMap<String,YamlValue>,
                     override val path : ValuePath?)
                      : YamlValue(path)
 {
+
+    // -----------------------------------------------------------------------------------------
+    // CONSTRUCTORS
+    // -----------------------------------------------------------------------------------------
+
+    constructor(map : HashMap<String,YamlValue>) : this(map, null)
+
+
+    // -----------------------------------------------------------------------------------------
+    // API
+    // -----------------------------------------------------------------------------------------
+
+    // Parsing Combinators
+    // -----------------------------------------------------------------------------------------
 
     /**
      * Get a parser for the value at the given key. The parser fails if the key does not exist.
@@ -382,6 +419,41 @@ data class YamlDict(private val map : HashMap<String,YamlValue>,
         }
     }
 
+
+    // Other
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * Returns the union of this Yaml Dictionary and another.
+     *
+     * @param otherYamlDict The other yaml dictionary to merge with this one.
+     *
+     * @return The Yaml Dictionary that has the key-value pairs from both dictionaries.
+     */
+    fun union(otherYamlDict : YamlDict) : YamlDict
+    {
+        // Is this really the easiest way to do this?
+        val bothEntries = this.map.entries.plus(otherYamlDict.map.entries)
+        //bothEntries.addAll(otherYamlDict.map.entries)
+        val newMap = hashMapOf<String,YamlValue>()
+
+        bothEntries.forEach { newMap.put(it.key, it.value) }
+
+        return YamlDict(newMap)
+    }
+
+
+    /**
+     * Returns the union of this [YamlDict] and another. If the other dictionary is not present,
+     * then this dictionary is returned with no modifications.
+     *
+     * @param otherYamlDict The other yaml dictionary to merge with this one. It may not exist.
+     */
+    fun maybeUnion(maybeOtherYamlDict : Maybe<YamlDict>) : YamlDict =
+        when (maybeOtherYamlDict) {
+            is Just    -> this.union(maybeOtherYamlDict.value)
+            is Nothing -> this
+        }
 }
 
 
@@ -393,47 +465,17 @@ data class YamlArray(val list : List<YamlValue>,
                      override val path : ValuePath?)
                       : YamlValue(path)
 {
-//    fun <T> map(f : (YamlValue) -> YamlParser<T>) : YamlParser<List<T>>
-//    {
-//        val results = mutableListOf<T>()
-//
-//        list.forEachIndexed { index, yamlValue ->
-//
-//            val yamlParser = f(yamlValue)
-//
-//            when (yamlParser) {
-//                is Val -> results.add(yamlParser.value)
-//                is Err -> {
-//                    val path = indexPath(index) + valueParser.path
-//                    return effError(valueParser.error, path)
-//                }
-//            }
-//        }
-//
-//        return result(results)
-//    }
-//
-//
-//    fun <T> mapSet(f : (YamlValue) -> Parser<T>) : Parser<Set<T>>
-//    {
-//        val results = HashSet<T>()
-//
-//        list.forEachIndexed { index, yamlValue ->
-//
-//            val valueParser = f(yamlValue)
-//
-//            when (valueParser) {
-//                is Result -> results.add(valueParser.value)
-//                is Error  -> {
-//                    val path = indexPath(index) + valueParser.path
-//                    return Error(valueParser.error, path)
-//                }
-//            }
-//        }
-//
-//        return result(results)
-//    }
 
+    // -----------------------------------------------------------------------------------------
+    // CONSTRUCTORS
+    // -----------------------------------------------------------------------------------------
+
+    constructor(valueList : List<YamlValue>) : this(valueList, null)
+
+
+    // -----------------------------------------------------------------------------------------
+    // API
+    // -----------------------------------------------------------------------------------------
 
     fun asStringSet() : YamlParser<Set<String>>
     {
@@ -461,6 +503,11 @@ data class YamlArray(val list : List<YamlValue>,
 
 data class YamlInteger(val number : Long,
                        override val path : ValuePath?) : YamlValue(path)
+{
+    constructor(value : Long) : this(value, null)
+
+    constructor(value : Int) : this(value.toLong(), null)
+}
 
 
 // Yaml Value > Float
@@ -468,6 +515,9 @@ data class YamlInteger(val number : Long,
 
 data class YamlFloat(val number : Double,
                      override val path : ValuePath?) : YamlValue(path)
+{
+    constructor(value : Double) : this(value, null)
+}
 
 
 // Yaml Value > Text
@@ -475,6 +525,9 @@ data class YamlFloat(val number : Double,
 
 data class YamlText(val text : String,
                     override val path : ValuePath?) : YamlValue(path)
+{
+    constructor(value : String) : this(value, null)
+}
 
 
 // Yaml Value > Bool
@@ -482,12 +535,18 @@ data class YamlText(val text : String,
 
 data class YamlBool(val bool : Boolean,
                     override val path : ValuePath?) : YamlValue(path)
+{
+    constructor(value : Boolean) : this(value, null)
+}
 
 
 // Yaml Value > Null
 // ---------------------------------------------------------------------------------------------
 
 class YamlNull(override val path : ValuePath?) : YamlValue(path)
+{
+    constructor() : this(null)
+}
 
 
 // ---------------------------------------------------------------------------------------------
