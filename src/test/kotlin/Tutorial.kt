@@ -1,9 +1,5 @@
 
 import com.kispoko.culebra.*
-import data.rpg.Feat
-import data.rpg.parseCharacter
-import data.rpg.wizardCharacter
-import data.rpg.wizardYaml
 import effect.*
 import io.kotlintest.matchers.beOfType
 import io.kotlintest.matchers.should
@@ -21,7 +17,7 @@ class Tutorial : StringSpec()
     init
     {
 
-        "Simple parsing example" {
+        "Simple record type parsing example" {
 
             data class Apple(val kind: String, val weightInGrams: Int, val isRipe: Boolean)
 
@@ -51,6 +47,47 @@ class Tutorial : StringSpec()
             }
         }
 
+
+        "Simple wrapped type parsing example" {
+
+            data class Grams(val value: Long)
+
+            data class Apple(val kind: String, val weightInGrams: Grams, val isRipe: Boolean)
+
+
+            val fujiAppleYamlString = """
+                kind: Fuji
+                weight_in_grams: 90
+                is_ripe: yes
+                """
+
+            fun parseGrams(yamlValue: YamlValue): YamlParser<Grams> = when (yamlValue)
+            {
+                is YamlInteger -> effValue(Grams(yamlValue.number))
+                else           -> effError(UnexpectedTypeFound(YamlType.INTEGER,
+                                                               yamlType(yamlValue),
+                                                               yamlValue.path))
+            }
+
+            fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
+            {
+                is YamlDict -> effApply(::Apple,
+                                        yamlValue.text("kind"),
+                                        yamlValue.at("weight_in_grams").apply(::parseGrams),
+                                        yamlValue.boolean("is_ripe"))
+                else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                            yamlType(yamlValue),
+                                                            yamlValue.path))
+            }
+
+            val myFujiApple = Apple("Fuji", Grams(90), true)
+
+            val fujiApple = parseYaml(fujiAppleYamlString, ::parseApple, false)
+            when (fujiApple) {
+                is Val -> fujiApple.value shouldBe myFujiApple
+                is Err -> fujiApple should beOfType<Eff<YamlParseError,Identity,Apple>>()
+            }
+        }
     }
 
 }

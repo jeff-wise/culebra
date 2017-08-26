@@ -33,7 +33,7 @@ if they typecheck, they should behave predictably.
 
 ### Parsing
 
-#### Basic Types
+#### Simple Record Type
 
 Let's start with a simple example: a record type containing the three most basic primitive types.
 
@@ -98,9 +98,68 @@ With this interface we can build parsers for all our datatypes however we would 
 to worry about checking every value to see if is null. By creating small parsers and using them
 to build larger ones, we have achieved the ultimate goal in code reuse: **composability**.
 
-parse with wrapped basic type
+#### Wrapped Types
 
-parse with array
+Oftentimes we like to add additional type-safety to our programs by wrapping primitive types 
+in new data types. In this case, we are going to create a Grams data type which simply wraps the 
+integer type from the previous example. Notice that we change the `Int` to a `Long`. This is 
+another benefit to wrapping primitive types: we can change the underlying representation without 
+breaking dependencies. Additionally, it makes our program easier to read and prevents us from 
+mixing up function parameters by accident.
+
+Of course, Yaml does not understand our custom data types so we need to map our custom data types 
+to the primitive types we read from Yaml. This is really simple using the monadic interface. 
+
+```kotlin
+data class Grams(val value: Long)
+
+data class Apple(val kind: String, val weightInGrams: Grams, val isRipe: Boolean)
+
+
+val fujiAppleYamlString = """
+    kind: Fuji
+    weight_in_grams: 90
+    is_ripe: yes
+    """
+
+fun parseGrams(yamlValue: YamlValue): YamlParser<Grams> = when (yamlValue)
+{
+    is YamlInteger -> effValue(Grams(yamlValue.number))
+    else           -> effError(UnexpectedTypeFound(YamlType.INTEGER,
+                                                   yamlType(yamlValue),
+                                                   yamlValue.path))
+}
+
+fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
+{
+    is YamlDict -> effApply(::Apple,
+                            yamlValue.text("kind"),
+                            yamlValue.at("weight_in_grams").apply(::parseGrams),
+                            yamlValue.boolean("is_ripe"))
+    else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                yamlType(yamlValue),
+                                                yamlValue.path))
+}
+
+val myFujiApple = Apple("Fuji", Grams(90), true)
+
+val fujiApple = parseYaml(fujiAppleYamlString, ::parseApple, false)
+when (fujiApple) {
+    is Val -> fujiApple.value shouldBe myFujiApple
+    is Err -> fujiApple should beOfType<Eff<YamlParseError,Identity,Apple>>()
+}
+```
+
+The only big difference in this example from before is the use of `apply` to create our Grams 
+data type parser. `yamlValue.at("weight_in_grams")` returns a parser that attempts to parse a 
+generic `YamlValue` at the `weight_in_grams` key. `apply` composes that parser with the Grams 
+parser, creating a miniature parsing pipeline. If the first stage fails because the key does not 
+exist, then our grams parser will/can never be applied. But we don't have to handle those error 
+cases explicity. They are encapsulated in the definition of `apply`.
+
+Generally `apply` is just fancy function application. It calls a function on a result, but handles 
+some other effects on the side, such as possible failure. In the context of parsing and this 
+library, we can thinking of it as a way to compose / connect yaml parsers.
 
 #### Sum Types
 
