@@ -15,7 +15,7 @@ if they typecheck, they should behave predictably.
 
 **Table of Contents**
 
-- [Usage Examplese](#usage-examples)
+- [Usage Examples](#usage-examples)
     - [Parsing](#parsing)
       - [Basic Types](#basic-types)
       - [Sum Types](#sum-types)
@@ -35,6 +35,8 @@ if they typecheck, they should behave predictably.
 
 #### Basic Types
 
+Let's start with a simple example: a record type containing the three most basic primitive types.
+
 ```kotlin
 data class Apple(val kind: String, val weightInGrams: Int, val isRipe: Boolean)
 
@@ -48,7 +50,7 @@ fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 {
     is YamlDict -> effApply(::Apple,
                             yamlValue.text("kind"),
-                            yamlValue.integer("bonus"),
+                            yamlValue.integer("weight_in_grams"),
                             yamlValue.boolean("is_ripe"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
@@ -63,7 +65,38 @@ when (fujiApple) {
 }
 ```
 
-parse dictionary with integer, bool, and string
+Notice that in the `parseApple` function we decide how the yaml values are mapped into our Kotlin
+data type. In this case we see that it doesn't matter if the yaml file uses underscores and the
+Kotlin data types use camelcase.
+
+Even if you've never used parser combinators before, the code should be fairly intuitive to read.
+Let's briefly go over the `parseApple` function. We can tell from the type signature that this
+function associates some `YamlValue` with a `YamlParser<Apple>`. The latter type represents a
+parser which takes a `YamlValue` and attempts to create an `Apple` from it. Of course, that parser
+may fail in many ways. These failure states are largely encapsulated inside the `YamlParser` type,
+so we can dictate what we want to parse, and let the how be handled behind the scenes. Whereas in
+OOP one tends to encapsulate using objects, functional programming gains great power from
+encapsulation of effects and state inside chains of function application. That is called, more or
+less, monadic programming. The details of that should be unnecessary to effectively use this
+library.
+
+The function starts by branching on the type of the `YamlValue`. If its not an object / dictionary
+yaml value, then it cannot possibly we an `Apple`, so we return an error, explaining exactly what
+happened. Note that here, as we will see later, we can be as flexible as we like. If we would like
+to interpret a yaml string as an `Apple`, we may do just that. That's why it's up to the programmer
+to return the error in this case.
+
+Finally, inside the `YamlDict` case, we apply the `Apple` constructor over the apple's values.
+The function application is special though, as are the values. Each value such as
+`yamlValue.integer("weight_in_grams")` is also a `YamlParser`. That value represents a yaml parser
+that tries to read an integer at the key `weight_in_grams`. The `effApply` allows use to apply an
+ordinary function (our Apple constructor) over those parsers, as if they were also ordinary values.
+It takes care of checking whether each parser has succeeded or not. If every parser is successful,
+then we get an Apple. If any parser fails, we get a parsing error.
+
+With this interface we can build parsers for all our datatypes however we would like. We don't have
+to worry about checking every value to see if is null. By creating small parsers and using them
+to build larger ones, we have achieved the ultimate goal in code reuse: **composability**.
 
 parse with wrapped basic type
 

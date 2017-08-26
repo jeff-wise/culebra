@@ -4,9 +4,9 @@ import data.rpg.Feat
 import data.rpg.parseCharacter
 import data.rpg.wizardCharacter
 import data.rpg.wizardYaml
-import effect.Val
-import effect.effApply
-import effect.effError
+import effect.*
+import io.kotlintest.matchers.beOfType
+import io.kotlintest.matchers.should
 import io.kotlintest.matchers.shouldBe
 import io.kotlintest.specs.StringSpec
 
@@ -35,7 +35,7 @@ class Tutorial : StringSpec()
             {
                 is YamlDict -> effApply(::Apple,
                                         yamlValue.text("kind"),
-                                        yamlValue.integer("bonus"),
+                                        yamlValue.integer("weight_in_grams"),
                                         yamlValue.boolean("is_ripe"))
                 else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                             yamlType(yamlValue),
@@ -47,6 +47,7 @@ class Tutorial : StringSpec()
             val fujiApple = parseYaml(fujiAppleYamlString, ::parseApple, false)
             when (fujiApple) {
                 is Val -> fujiApple.value shouldBe myFujiApple
+                is Err -> fujiApple should beOfType<Eff<YamlParseError,Identity,Apple>>()
             }
         }
 
