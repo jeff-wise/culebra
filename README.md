@@ -23,7 +23,7 @@ if they typecheck, they should behave predictably.
       - [Sum Types](#sum-types)
       - [Optional Types](#optional-types)
     - [Encoding](#encoding)
-      - [Basic Types](#basic-types-1)
+      - [Simple Record Type](#simple-record-type-1)
       - [Sum Types](#sum-types-1)
       - [Optional Types](#optional-types-1)
       - [Nested Types](#nested-types-1)
@@ -47,7 +47,7 @@ val fujiAppleYamlString = """
     is_ripe: yes
     """
 
-fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
+fun appleParser(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 {
     is YamlDict -> effApply(::Apple,
                             yamlValue.text("kind"),
@@ -60,7 +60,7 @@ fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 
 val myFujiApple = Apple("Fuji", 90, true)
 
-val fujiApple = parseYaml(fujiAppleYamlString, ::parseApple, false)
+val fujiApple = parseYaml(fujiAppleYamlString, ::appleParser)
 when (fujiApple) {
     is Val -> fujiApple.value shouldBe myFujiApple
 }
@@ -123,7 +123,7 @@ val fujiAppleYamlString = """
     is_ripe: yes
     """
 
-fun parseGrams(yamlValue: YamlValue): YamlParser<Grams> = when (yamlValue)
+fun gramsParser(yamlValue: YamlValue): YamlParser<Grams> = when (yamlValue)
 {
     is YamlInteger -> effValue(Grams(yamlValue.number))
     else           -> effError(UnexpectedTypeFound(YamlType.INTEGER,
@@ -131,12 +131,12 @@ fun parseGrams(yamlValue: YamlValue): YamlParser<Grams> = when (yamlValue)
                                                    yamlValue.path))
 }
 
-fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
+fun appleParser(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 {
     is YamlDict -> effApply(::Apple,
                             yamlValue.text("kind"),
                             // We apply the Grams parser to the YamlValue at "weight_in_grams"
-                            yamlValue.at("weight_in_grams").apply(::parseGrams),
+                            yamlValue.at("weight_in_grams").apply(::gramsParser),
                             yamlValue.boolean("is_ripe"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
@@ -145,7 +145,7 @@ fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 
 val myFujiApple = Apple("Fuji", Grams(90), true)
 
-val fujiApple = parseYaml(fujiAppleYamlString, ::parseApple, false)
+val fujiApple = parseYaml(fujiAppleYamlString, ::appleParser)
 when (fujiApple) {
     is Val -> fujiApple.value shouldBe myFujiApple
     is Err -> fujiApple should beOfType<Eff<YamlParseError,Identity,Apple>>()
@@ -174,7 +174,7 @@ data class Song(val name: String, val length: Int)
 
 data class Album(val name: String, val songs: List<Song>)
 
-fun parseSong(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
+fun songParser(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
 {
     is YamlDict -> effApply(::Song, yamlValue.text("name"), yamlValue.integer("length"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
@@ -182,12 +182,12 @@ fun parseSong(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
                                                 yamlValue.path))
 }
 
-fun parseAlbum(yamlValue: YamlValue): YamlParser<Album> = when (yamlValue)
+fun albumParser(yamlValue: YamlValue): YamlParser<Album> = when (yamlValue)
 {
     is YamlDict -> effApply(::Album,
                             yamlValue.text("name"),
                             yamlValue.array("songs")
-                                     .apply { it.mapApply { parseSong(it) } })
+                                     .apply { it.mapApply { songParser(it) } })
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -212,7 +212,7 @@ val javaTalkAlbum = Album("Java Talk",
                                  Song("Clojure", 188),
                                  Song("Scala", 250)))
 
-val album = parseYaml(javaTalkAlbumString, ::parseAlbum, false)
+val album = parseYaml(javaTalkAlbumString, ::albumParser)
 when (album) {
     is Val -> album.value shouldBe javaTalkAlbum
     is Err -> album should beOfType<Eff<YamlParseError,Identity,Album>>()
@@ -270,7 +270,7 @@ data class Castle(override val numberOfRooms: Int,
                   val hasPortcullis: Boolean) : Home(numberOfRooms)
 
 
-fun parseTownhouse(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
+fun townhouseParser(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 {
     is YamlDict -> effApply(::Townhouse,
                             yamlValue.integer("rooms"),
@@ -281,7 +281,7 @@ fun parseTownhouse(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 }
 
 
-fun parseCastle(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
+fun castleParser(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 {
     is YamlDict -> effApply(::Castle,
                             yamlValue.integer("rooms"),
@@ -292,14 +292,14 @@ fun parseCastle(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 }
 
 
-fun parseHome(yamlValue: YamlValue) : YamlParser<Home> = when (yamlValue)
+fun homeParser(yamlValue: YamlValue) : YamlParser<Home> = when (yamlValue)
 {
     is YamlDict ->
     {
         yamlValue.text("home_type") apply {
             when (it) {
-                "townhouse" -> yamlValue.at("home").apply(::parseTownhouse)
-                "castle"    -> yamlValue.at("home").apply(::parseCastle)
+                "townhouse" -> yamlValue.at("home").apply(::townhouseParser)
+                "castle"    -> yamlValue.at("home").apply(::castleParser)
                 else        -> effError<YamlParseError,Home>(
                                    UnexpectedStringValue(it, yamlValue.path))
             }
@@ -317,7 +317,7 @@ val myCastleYamlString = """
 
 val myCastle = Castle(27, true) 
                          
-val home = parseYaml(myCastleYamlString, ::parseHome, false)
+val home = parseYaml(myCastleYamlString, ::homeParser)
 when (home) {
     is Val -> home.value shouldBe myCastle
     is Err -> home should beOfType<Eff<YamlParseError,Identity,Home>>()
@@ -360,7 +360,7 @@ val myDinnerString = """
 
 val myDinner = Dinner(Nothing(), "Steak", Just("Cake"))
 
-val dinner = parseYaml(myDinnerString, ::parseDinner, false)
+val dinner = parseYaml(myDinnerString, ::parseDinner)
 when (dinner) {
     is Val -> dinner.value shouldBe myDinner
     is Err -> dinner should beOfType<Eff<YamlParseError,Identity,Dinner>>()
@@ -369,10 +369,163 @@ when (dinner) {
 
 ### Encoding
 
-#### Basic Types
+Encoding our data types into Yaml values is much easier. We already have the data so we just need 
+to translate it from our Kotlin data types into `YamlValue`s. 
+
+#### Simple Record Type
+
+```kotlin
+data class Grams(val value : Long) : ToYaml
+{
+    override fun toYaml(): YamlValue = YamlInteger(value)
+}
+
+data class Apple(val kind: String, val weightInGrams: Grams, val isRipe: Boolean) : ToYaml
+{
+    override fun toYaml(): YamlValue =
+        YamlDict(
+            hashMapOf("kind"            to YamlText(this.kind),
+                      "weight_in_grams" to weightInGrams.toYaml(),
+                      "is_ripe"         to YamlBool(this.isRipe)))
+}
+
+val fujiApple = Apple("Fuji", Grams(90), true)
+
+val fujiAppleYamlString = encodeYaml(fujiApple)
+
+val apple = parseYaml(fujiAppleYamlString, ::parseApple)
+when (apple) {
+    is Val -> apple.value shouldBe fujiApple
+    is Err -> apple should beOfType<Eff<YamlParseError,Identity,Apple>>()
+}
+```
+
+#### Arrays
+
+```kotlin
+data class Song(val name: String, val length: Int) : ToYaml
+{
+    override fun toYaml(): YamlValue =
+        YamlDict(
+            hashMapOf("name"   to YamlText(this.name),
+                      "length" to YamlInteger(this.length)))
+}
+
+data class Album(val name: String, val songs: List<Song>) : ToYaml
+{
+    override fun toYaml(): YamlValue =
+        YamlDict(
+            hashMapOf("name"  to YamlText(this.name),
+                      "songs" to YamlArray(this.songs.map { it.toYaml() })))
+}
+
+val javaTalkAlbum = Album("Java Talk",
+                          listOf(Song("Kotlin", 223),
+                                 Song("Java", 407),
+                                 Song("Clojure", 188),
+                                 Song("Scala", 250)))
+
+val javaTalkAlbumYamlString = encodeYaml(javaTalkAlbum)
+
+val album = parseYaml(javaTalkAlbumYamlString, ::parseAlbum)
+when (album) {
+    is Val -> album.value shouldBe javaTalkAlbum
+    is Err -> album should beOfType<Eff<YamlParseError,Identity,Album>>()
+}
+```
+
 #### Sum Types
+
+```kotlin
+sealed class Home(open val numberOfRooms: Int) : ToYaml
+{
+    
+    override fun toYaml() : YamlValue = when (this)
+    {
+        is Townhouse -> {
+            YamlDict(
+                hashMapOf("home_type" to YamlText("townhouse"),
+                          "home"      to this.toYaml()))
+        }
+        is Castle -> {
+            YamlDict(
+                hashMapOf("home_type" to YamlText("castle"),
+                          "home"      to this.toYaml()))
+        }
+    }
+}
+
+data class Townhouse(override val numberOfRooms: Int,
+                     val mortgagePayment: Int) : Home(numberOfRooms), ToYaml
+{
+
+    override fun toYaml(): YamlValue =
+        YamlDict(
+            hashMapOf("rooms"   to YamlInteger(this.numberOfRooms),
+                      "payment" to YamlInteger(this.mortgagePayment)))
+}
+
+
+data class Castle(override val numberOfRooms: Int,
+                  val hasPortcullis: Boolean) : Home(numberOfRooms), ToYaml
+{
+    override fun toYaml(): YamlValue =
+        YamlDict(
+            hashMapOf("rooms"          to YamlInteger(this.numberOfRooms),
+                      "has_portcullis" to YamlBool(this.hasPortcullis)))
+}
+
+val myCastle = Castle(27, true)
+
+val myCastleYamlString = encodeYaml(myCastle)
+
+val castle = parseYaml(myCastleYamlString, ::parseCastle)
+when (castle) {
+    is Val -> castle.value shouldBe myCastle
+    is Err -> castle should beOfType<Eff<YamlParseError,Identity,Home>>()
+}
+```
+
 #### Optional Types
-#### Nested Types
+
+```kotlin
+data class Dinner(val appetizer: Maybe<String>,
+                  val mainCourse: String,
+                  val dessert: Maybe<String>) : ToYaml
+{
+    override fun toYaml() : YamlValue = YamlDict()
+        .maybeUnion(this.appetizer apply {
+            Just(YamlDict(hashMapOf("appetizer" to YamlText(it))))
+        })
+        .union(YamlDict(hashMapOf("main_course" to YamlText(this.mainCourse))))
+        .maybeUnion(this.dessert apply {
+            Just(YamlDict(hashMapOf("dessert" to YamlText(it))))
+        })
+}
+
+fun parseDinner(yamlValue : YamlValue) : YamlParser<Dinner> = when (yamlValue)
+{
+    is YamlDict -> {
+        effApply(::Dinner,
+                 yamlValue.maybeText("appetizer"),
+                 yamlValue.text("main_course"),
+                 yamlValue.maybeText("dessert"))
+    }
+    else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
+}
+
+
+val myDinner = Dinner(Nothing(), "Steak", Just("Cake"))
+
+val myDinnerYamlString = encodeYaml(myDinner)
+
+val dinner = parseYaml(myDinnerYamlString, ::parseDinner, false)
+when (dinner) {
+    is Val -> dinner.value shouldBe myDinner
+    is Err -> dinner should beOfType<Eff<YamlParseError,Identity,Dinner>>()
+}
+```
+
 
 
 [snakeyaml]: https://bitbucket.org/asomov/snakeyaml

@@ -4,8 +4,7 @@ package com.kispoko.culebra
 
 import effect.*
 import effect.Nothing
-import java.util.HashMap
-
+import kotlin.collections.HashMap
 
 
 // ---------------------------------------------------------------------------------------------
@@ -53,7 +52,10 @@ data class YamlDict(val map : HashMap<String,YamlValue>,
     // CONSTRUCTORS
     // -----------------------------------------------------------------------------------------
 
-    constructor(map : HashMap<String,YamlValue>) : this(map, null)
+    constructor() : this(hashMapOf(), null)
+
+
+    constructor(map: HashMap<String,YamlValue>) : this(map, null)
 
 
     // -----------------------------------------------------------------------------------------
