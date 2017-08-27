@@ -495,6 +495,9 @@ data class YamlArray(val list : List<YamlValue>,
     }
 
 
+    fun <A> mapApply(f : (YamlValue) -> YamlParser<A>) : YamlParser<List<A>> =
+        this.list.mapApply(f)
+
 }
 
 

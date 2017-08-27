@@ -96,7 +96,7 @@ then we get an Apple. If any parser fails, we get a parsing error.
 
 With this interface we can build parsers for all our datatypes however we would like. We don't have
 to worry about checking every value to see if is null. By creating small parsers and using them
-to build larger ones, we have achieved the ultimate goal in code reuse: **composability**.
+to build larger ones, we have achieved the ultimate goal in code reuse: *composability*.
 
 #### Wrapped Types
 
@@ -107,8 +107,8 @@ another benefit to wrapping primitive types: we can change the underlying repres
 breaking dependencies. Additionally, it makes our program easier to read and prevents us from 
 mixing up function parameters by accident.
 
-Of course, Yaml does not understand our custom data types so we need to map our custom data types 
-to the primitive types we read from Yaml. This is really simple using the monadic interface. 
+Of course, Yaml does not understand our custom data types so we need to map them to the 
+primitive types we read from Yaml. This is really simple using the monadic interface. 
 
 ```kotlin
 data class Grams(val value: Long)
@@ -134,6 +134,7 @@ fun parseApple(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 {
     is YamlDict -> effApply(::Apple,
                             yamlValue.text("kind"),
+                            // We apply the Grams parser to the YamlValue at "weight_in_grams"
                             yamlValue.at("weight_in_grams").apply(::parseGrams),
                             yamlValue.boolean("is_ripe"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
@@ -159,7 +160,99 @@ cases explicity. They are encapsulated in the definition of `apply`.
 
 Generally `apply` is just fancy function application. It calls a function on a result, but handles 
 some other effects on the side, such as possible failure. In the context of parsing and this 
-library, we can thinking of it as a way to compose / connect yaml parsers.
+library, we can think of it as a way to compose / connect yaml parsers.
+
+#### Arrays
+
+To parse arrays of nested data types, we need just one new function: `mapApply`. A combination of 
+`map` and `apply`, it allows us to create a parser for each item in a list and combine those parsers 
+into one big parser that parsers the entire list, failing if any item in the list cannot be parsed. 
+
+```kotlin
+data class Song(val name: String, val length: Int)
+
+data class Album(val name: String, val songs: List<Song>)
+
+fun parseSong(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
+{
+    is YamlDict -> effApply(::Song,
+                            yamlValue.text("name"),
+                            yamlValue.integer("length"))
+    else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                yamlType(yamlValue),
+                                                yamlValue.path))
+}
+
+fun parseAlbum(yamlValue: YamlValue): YamlParser<Album> = when (yamlValue)
+{
+    is YamlDict -> effApply(::Album,
+                            yamlValue.text("name"),
+                            yamlValue.array("songs")
+                                     .apply { it.mapApply { parseSong(it) } })
+    else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                yamlType(yamlValue),
+                                                yamlValue.path))
+}
+
+val javaTalkAlbumString = """
+    name: Java Talk
+    songs:
+    - name: Kotlin
+      length: 223
+    - name: Java
+      length: 407
+    - name: Clojure
+      length: 188
+    - name: Scala
+      length: 250
+    """
+
+val javaTalkAlbum = Album("Java Talk",
+                          listOf(Song("Kotlin", 223),
+                                 Song("Java", 407),
+                                 Song("Clojure", 188),
+                                 Song("Scala", 250)))
+
+val album = parseYaml(javaTalkAlbumString, ::parseAlbum, false)
+when (album) {
+    is Val -> album.value shouldBe javaTalkAlbum
+    is Err -> album should beOfType<Eff<YamlParseError,Identity,Album>>()
+}
+```
+
+To parse the songs we call `yamlValue.array("songs")` to get the `YamlParser<YamlArray>` at the 
+*songs* key. Like in the previous example, we cannot call a function directly on this value, 
+because it's not a value, but a parser that will try to get our value. We must use `apply` like 
+before, and then we have access to the `YamlArray` as if it were not inside the parser object. 
+
+Now we have a list of yaml values, but we need to parse each one. Each value could fail to be 
+parsed, in which case we want to fail the list parse as well. But each value is returned 
+inside a parser, so we have to check each parser for failure or success and collect the values. 
+The code for that procedure would look like this:
+
+```kotlin
+
+fun A parseList(yamlValues : List<YamlValue>, 
+                parser : (YamlValue) -> YamlParser<A>) : YamlParser<List<A>>
+{
+    val values : MutableList<A> = mutableListOf()
+    
+    yamlValues.forEach { yamlValue ->
+        val valueParser = parser(yamlValue)
+        when (valueParser) {
+            is Val -> values.add(valueParser.value)
+            is Err -> return effError(CouldNotParse())
+        }
+    }
+
+    return effValue(values)
+}
+```
+
+That's a lot of code. Without this library and without Applicative Functors, parsing like this 
+would be impractical. But `mapApply` will do what the `parseList` function does in one line of 
+code, so we don't have to worry about the *how* of parsing our Yaml, only the *what*.
+
 
 #### Sum Types
 

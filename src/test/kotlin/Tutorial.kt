@@ -48,7 +48,7 @@ class Tutorial : StringSpec()
         }
 
 
-        "Simple wrapped type parsing example" {
+        "Wrapped type parsing example" {
 
             data class Grams(val value: Long)
 
@@ -86,6 +86,60 @@ class Tutorial : StringSpec()
             when (fujiApple) {
                 is Val -> fujiApple.value shouldBe myFujiApple
                 is Err -> fujiApple should beOfType<Eff<YamlParseError,Identity,Apple>>()
+            }
+        }
+
+
+        "Array parsing example" {
+
+            data class Song(val name: String, val length: Int)
+
+            data class Album(val name: String, val songs: List<Song>)
+
+            fun parseSong(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
+            {
+                is YamlDict -> effApply(::Song,
+                                        yamlValue.text("name"),
+                                        yamlValue.integer("length"))
+                else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                            yamlType(yamlValue),
+                                                            yamlValue.path))
+            }
+
+            fun parseAlbum(yamlValue: YamlValue): YamlParser<Album> = when (yamlValue)
+            {
+                is YamlDict -> effApply(::Album,
+                                        yamlValue.text("name"),
+                                        yamlValue.array("songs")
+                                                 .apply { it.mapApply { parseSong(it) } })
+                else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                            yamlType(yamlValue),
+                                                            yamlValue.path))
+            }
+
+            val javaTalkAlbumString = """
+                name: Java Talk
+                songs:
+                - name: Kotlin
+                  length: 223
+                - name: Java
+                  length: 407
+                - name: Clojure
+                  length: 188
+                - name: Scala
+                  length: 250
+                """
+
+            val javaTalkAlbum = Album("Java Talk",
+                                      listOf(Song("Kotlin", 223),
+                                             Song("Java", 407),
+                                             Song("Clojure", 188),
+                                             Song("Scala", 250)))
+
+            val album = parseYaml(javaTalkAlbumString, ::parseAlbum, false)
+            when (album) {
+                is Val -> album.value shouldBe javaTalkAlbum
+                is Err -> album should beOfType<Eff<YamlParseError,Identity,Album>>()
             }
         }
     }
