@@ -32,6 +32,9 @@ if they typecheck, they should behave predictably.
 
 ## Usage Examples
 
+Good code examples are the most efficient way to learn to use a library. Here are examples for most 
+use cases. There are some more (and larger) examples in the tests.
+
 ### Parsing
 
 #### Simple Record Type
