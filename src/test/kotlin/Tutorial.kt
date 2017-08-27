@@ -142,6 +142,7 @@ class Tutorial : StringSpec()
                 is Err -> album should beOfType<Eff<YamlParseError,Identity,Album>>()
             }
         }
+
     }
 
 }

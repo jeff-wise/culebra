@@ -175,9 +175,7 @@ data class Album(val name: String, val songs: List<Song>)
 
 fun parseSong(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Song,
-                            yamlValue.text("name"),
-                            yamlValue.integer("length"))
+    is YamlDict -> effApply(::Song, yamlValue.text("name"), yamlValue.integer("length"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -255,6 +253,83 @@ code, so we don't have to worry about the *how* of parsing our Yaml, only the *w
 
 
 #### Sum Types
+
+There are a few ways to implement sum types in Yaml. Any of them can be done with Culebra. Here we 
+show one method, where we specify the case of the sum type in a Yaml object and put the actual 
+value inside another key in the same object. This is the most extensible / understandable method for 
+encoding sum types in Yaml. 
+
+```kotlin
+sealed class Home(open val numberOfRooms: Int)
+
+data class Townhouse(override val numberOfRooms: Int,
+                     val mortgagePayment: Int) : Home(numberOfRooms)
+
+data class Castle(override val numberOfRooms: Int,
+                  val hasPortcullis: Boolean) : Home(numberOfRooms)
+
+
+fun parseTownhouse(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
+{
+    is YamlDict -> effApply(::Townhouse,
+                            yamlValue.integer("rooms"),
+                            yamlValue.integer("mortgage_payment"))
+    else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                yamlType(yamlValue),
+                                                yamlValue.path))
+}
+
+
+fun parseCastle(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
+{
+    is YamlDict -> effApply(::Castle,
+                            yamlValue.integer("rooms"),
+                            yamlValue.boolean("has_portcullis"))
+    else        -> effError(UnexpectedTypeFound(YamlType.DICT,
+                                                yamlType(yamlValue),
+                                                yamlValue.path))
+}
+
+
+fun parseHome(yamlValue: YamlValue) : YamlParser<Home> = when (yamlValue)
+{
+    is YamlDict ->
+    {
+        yamlValue.text("home_type") apply {
+            when (it) {
+                "townhouse" -> yamlValue.at("home").apply(::parseTownhouse)
+                "castle"    -> yamlValue.at("home").apply(::parseCastle)
+                else        -> effError<YamlParseError,Home>(
+                                   UnexpectedStringValue(it, yamlValue.path))
+            }
+        }
+    }
+    else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
+}
+
+val myCastleYamlString = """
+    home_type: castle
+    home:
+      rooms: 27
+      has_portcullis: true
+    """
+
+val myCastle = Castle(27, true) 
+                         
+val home = parseYaml(myCastleYamlString, ::parseHome, false)
+when (home) {
+    is Val -> home.value shouldBe myCastle
+    is Err -> home should beOfType<Eff<YamlParseError,Identity,Home>>()
+}
+```
+
+There's not much new to see here. One thing to note is that Kotlin's type inference can be pretty 
+frustrating to deal with at times. We made two adjustments to make this code check. First, the 
+`parseTownhouse` and `parseCastle` code have a return type of `YamlParser<Home>` instead of 
+`YamlParser<Townhouse>` and `YamlParser<Castle>` respectively. This works here, but can cause 
+problems in other code. In that case you will have to do an unchecked cast at the calling site. 
+Second, we have to add a type annotation to the error case in `parseHome`. Overall, the code 
+remains concise and readable. 
 
 #### Optional Types
 
