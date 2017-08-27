@@ -22,7 +22,6 @@ if they typecheck, they should behave predictably.
       - [Arrays](#arrays)
       - [Sum Types](#sum-types)
       - [Optional Types](#optional-types)
-      - [Nested Types](#nested-types)
     - [Encoding](#encoding)
       - [Basic Types](#basic-types-1)
       - [Sum Types](#sum-types-1)
@@ -335,11 +334,38 @@ remains concise and readable.
 
 #### Optional Types
 
-parse basic with maybes
+Sometimes we have data types with optional fields. Kotlin has good support of `null` values, but 
+the `Maybe` type is a more powerful and flexible alternative. 
 
-#### Nested Types
+```kotlin
+data class Dinner(val appetizer: Maybe<String>,
+                  val mainCourse: String,
+                  val dessert: Maybe<String>)
 
-simple combination of previous examples
+fun parseDinner(yamlValue : YamlValue) : YamlParser<Dinner> = when (yamlValue)
+{
+    is YamlDict -> {
+        effApply(::Dinner,
+                 yamlValue.maybeText("appetizer"),
+                 yamlValue.text("main_course"),
+                 yamlValue.maybeText("dessert"))
+    }
+    else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
+}
+
+val myDinnerString = """
+    main_course: Steak
+    dessert: Cake
+    """
+
+val myDinner = Dinner(Nothing(), "Steak", Just("Cake"))
+
+val dinner = parseYaml(myDinnerString, ::parseDinner, false)
+when (dinner) {
+    is Val -> dinner.value shouldBe myDinner
+    is Err -> dinner should beOfType<Eff<YamlParseError,Identity,Dinner>>()
+}
+```
 
 ### Encoding
 

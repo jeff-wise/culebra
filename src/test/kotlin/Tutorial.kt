@@ -1,5 +1,6 @@
 
 import com.kispoko.culebra.*
+import data.rpg.Spell
 import effect.*
 import io.kotlintest.matchers.beOfType
 import io.kotlintest.matchers.should
@@ -142,6 +143,39 @@ class Tutorial : StringSpec()
                 is Err -> album should beOfType<Eff<YamlParseError,Identity,Album>>()
             }
         }
+
+
+        "Maybe parsing example" {
+
+            data class Dinner(val appetizer: Maybe<String>,
+                              val mainCourse: String,
+                              val dessert: Maybe<String>)
+
+            fun parseDinner(yamlValue : YamlValue) : YamlParser<Dinner> = when (yamlValue)
+            {
+                is YamlDict -> {
+                    effApply(::Dinner,
+                             yamlValue.maybeText("appetizer"),
+                             yamlValue.text("main_course"),
+                             yamlValue.maybeText("dessert"))
+                }
+                else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
+            }
+
+            val myDinnerString = """
+                main_course: Steak
+                dessert: Cake
+                """
+
+            val myDinner = Dinner(Nothing(), "Steak", Just("Cake"))
+
+            val dinner = parseYaml(myDinnerString, ::parseDinner, false)
+            when (dinner) {
+                is Val -> dinner.value shouldBe myDinner
+                is Err -> dinner should beOfType<Eff<YamlParseError,Identity,Dinner>>()
+            }
+        }
+
 
     }
 
