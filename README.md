@@ -17,7 +17,9 @@ if they typecheck, they should behave predictably.
 
 - [Usage Examples](#usage-examples)
     - [Parsing](#parsing)
-      - [Basic Types](#basic-types)
+      - [Simple Record Type](#simple-record-type)
+      - [Wrapped Types](#wrapped-types)
+      - [Arrays](#arrays)
       - [Sum Types](#sum-types)
       - [Optional Types](#optional-types)
       - [Nested Types](#nested-types)
