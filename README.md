@@ -8,30 +8,34 @@ Applicative / Monadic parsing style. It is heavily influenced by [aeson] Haskell
 
 ### Why Use Culebra?
 
- * **Flexible** Map your data types to and from any Yaml format with 
+ * **Flexible:** Map your data types to and from any YAML file with 
            no constraints on the shape of the data or the names of the fields.
            
- * **Compositional** You can easily combine parsers for different datatypes into 
-        larger parsers in order to maximize code reuse.
-
- * **Sum Types** Culebra supports de/serialization of sum types in whichever way 
+ * **Sum Types:** Culebra supports de/serialization of sum types in whichever way 
        you want to represent them.
+ 
+ * **Compositional:** You can easily combine parsers for different datatypes into 
+        larger parsers in order to maximize code reuse.
+       
+ * **No Exceptions:** Errors are encoded in the types so your program's behavior is 
+        explicity defined.
 
 ### Tutorial Contents
 
 - [Installation](#installation)
+  - [Gradle](#gradle)
 - [Usage](#usage)
-    - [Parsing](#parsing)
-      - [Simple Record Type](#simple-record-type)
-      - [Wrapped Types](#wrapped-types)
-      - [Arrays](#arrays)
-      - [Sum Types](#sum-types)
-      - [Optional Types](#optional-types)
-    - [Encoding](#encoding)
-      - [Simple Record Type](#simple-record-type-1)
-      - [Sum Types](#sum-types-1)
-      - [Optional Types](#optional-types-1)
-      - [Nested Types](#nested-types-1)
+  - [Parsing](#parsing)
+    - [Simple Record Type](#simple-record-type)
+    - [Wrapped Types](#wrapped-types)
+    - [Arrays](#arrays)
+    - [Sum Types](#sum-types)
+    - [Optional Types](#optional-types)
+  - [Encoding](#encoding)
+    - [Simple Record Type](#simple-record-type-1)
+    - [Sum Types](#sum-types-1)
+    - [Optional Types](#optional-types-1)
+    - [Nested Types](#nested-types-1)
 - [More Examples](#examples)
 
 ## Installation
