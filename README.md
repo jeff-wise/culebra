@@ -4,18 +4,19 @@
 Culebra is a Yaml serialization library for Kotlin built using
 the [snakeyaml] library. It provides a flexible interface for
 serializing Kotlin values to and from Yaml with the help of the
-Applicative / Monadic parsing style. This library is heavily
-influenced by [aeson] and pure functional programming methods. 
+Applicative / Monadic parsing style. It is heavily influenced by [aeson].
 
-With Culebra you are not limited to using DTOs. You can design both
-the structure of your Yaml files and your Kotlin data types however
-you like and serialize directly between the two. The tradeoff is that
-you have to write the functions yourself. But it's not that hard, and
-if they typecheck, they should behave predictably.
+**Flexible** It allows you to map your data types to and from Yaml freely, with 
+           no constraints on the shape of the data or the names of the fields.
+           
+**Compositional** You can easily combine parsers for different datatypes into 
+        larger parsers in order to maximize code reuse.
 
-**Table of Contents**
+**Compositional** You can easily combine parsers for different datatypes into 
+        larger parsers in order to maximize code reuse.
 
-- [Usage Examples](#usage-examples)
+- [Installation](#installation)
+- [Usage](#usage)
     - [Parsing](#parsing)
       - [Simple Record Type](#simple-record-type)
       - [Wrapped Types](#wrapped-types)
@@ -29,8 +30,24 @@ if they typecheck, they should behave predictably.
       - [Nested Types](#nested-types-1)
 - [More Examples](#examples)
 
+## Installation
 
-## Usage Examples
+#### Gradle
+
+```
+allprojects {
+  repositories {
+      jcenter()
+      maven { url "https://jitpack.io" }
+  }
+}
+
+dependencies {
+    compile 'com.github.jeff-wise:culebra:0.7.0
+}
+```
+
+## Usage
 
 Good code examples are the most efficient way to learn to use a library. Here are examples for most 
 use cases. There are some more (and larger) examples in the tests.
@@ -52,10 +69,10 @@ val fujiAppleYamlString = """
 
 fun appleParser(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Apple,
-                            yamlValue.text("kind"),
-                            yamlValue.integer("weight_in_grams"),
-                            yamlValue.boolean("is_ripe"))
+    is YamlDict -> apply(::Apple,
+                         yamlValue.text("kind"),
+                         yamlValue.integer("weight_in_grams"),
+                         yamlValue.boolean("is_ripe"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -136,11 +153,11 @@ fun gramsParser(yamlValue: YamlValue): YamlParser<Grams> = when (yamlValue)
 
 fun appleParser(yamlValue: YamlValue): YamlParser<Apple> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Apple,
-                            yamlValue.text("kind"),
-                            // We apply the Grams parser to the YamlValue at "weight_in_grams"
-                            yamlValue.at("weight_in_grams").apply(::gramsParser),
-                            yamlValue.boolean("is_ripe"))
+    is YamlDict -> apply(::Apple,
+                         yamlValue.text("kind"),
+                         // We apply the Grams parser to the YamlValue at "weight_in_grams"
+                         yamlValue.at("weight_in_grams").apply(::gramsParser),
+                         yamlValue.boolean("is_ripe"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -179,7 +196,7 @@ data class Album(val name: String, val songs: List<Song>)
 
 fun songParser(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Song, yamlValue.text("name"), yamlValue.integer("length"))
+    is YamlDict -> apply(::Song, yamlValue.text("name"), yamlValue.integer("length"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -187,10 +204,10 @@ fun songParser(yamlValue: YamlValue): YamlParser<Song> = when (yamlValue)
 
 fun albumParser(yamlValue: YamlValue): YamlParser<Album> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Album,
-                            yamlValue.text("name"),
-                            yamlValue.array("songs")
-                                     .apply { it.mapApply { songParser(it) } })
+    is YamlDict -> apply(::Album,
+                         yamlValue.text("name"),
+                         yamlValue.array("songs")
+                                  .apply { it.mapApply { songParser(it) } })
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -275,9 +292,9 @@ data class Castle(override val numberOfRooms: Int,
 
 fun townhouseParser(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Townhouse,
-                            yamlValue.integer("rooms"),
-                            yamlValue.integer("mortgage_payment"))
+    is YamlDict -> apply(::Townhouse,
+                         yamlValue.integer("rooms"),
+                         yamlValue.integer("mortgage_payment"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -286,9 +303,9 @@ fun townhouseParser(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 
 fun castleParser(yamlValue: YamlValue): YamlParser<Home> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Castle,
-                            yamlValue.integer("rooms"),
-                            yamlValue.boolean("has_portcullis"))
+    is YamlDict -> apply(::Castle,
+                         yamlValue.integer("rooms"),
+                         yamlValue.boolean("has_portcullis"))
     else        -> effError(UnexpectedTypeFound(YamlType.DICT,
                                                 yamlType(yamlValue),
                                                 yamlValue.path))
@@ -347,12 +364,10 @@ data class Dinner(val appetizer: Maybe<String>,
 
 fun parseDinner(yamlValue : YamlValue) : YamlParser<Dinner> = when (yamlValue)
 {
-    is YamlDict -> {
-        effApply(::Dinner,
-                 yamlValue.maybeText("appetizer"),
-                 yamlValue.text("main_course"),
-                 yamlValue.maybeText("dessert"))
-    }
+    is YamlDict -> apply(::Dinner,
+                         yamlValue.maybeText("appetizer"),
+                         yamlValue.text("main_course"),
+                         yamlValue.maybeText("dessert"))
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 

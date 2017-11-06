@@ -6,6 +6,7 @@ import com.kispoko.culebra.*
 import effect.*
 
 
+
 // ---------------------------------------------------------------------------------------------
 // *****                                       PARSERS                                     *****
 // ---------------------------------------------------------------------------------------------
@@ -51,14 +52,14 @@ fun parseCharacterType(yamlValue : YamlValue) : YamlParser<CharacterType> = when
 
 fun parseCharacterData(yamlValue : YamlValue) : YamlParser<CharacterData> = when (yamlValue)
 {
-    is YamlDict -> effApply(::CharacterData,
-                            yamlValue.valueList("spoken_languages") ap {
-                                    it.mapMI { parseLanguage(it) }
-                            },
-                            yamlValue.at("ability_scores") ap ::parseAbilityScores,
-                            yamlValue.valueList("items") ap {
-                                it.mapMI { parseItem(it) }
-                            } )
+    is YamlDict -> apply(::CharacterData,
+                         yamlValue.valueList("spoken_languages") ap {
+                                 it.mapMI { parseLanguage(it) }
+                         },
+                         yamlValue.at("ability_scores") ap ::parseAbilityScores,
+                         yamlValue.valueList("items") ap {
+                             it.mapMI { parseItem(it) }
+                         } )
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -67,9 +68,9 @@ fun parseCharacterData(yamlValue : YamlValue) : YamlParser<CharacterData> = when
 
 fun parseFighter(yamlValue : YamlValue) : YamlParser<Character> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Fighter,
-                            parseCharacterData(yamlValue),
-                            yamlValue.valueList("feats") ap { it.mapMI { parseFeat(it) } } )
+    is YamlDict -> apply(::Fighter,
+                         parseCharacterData(yamlValue),
+                         yamlValue.valueList("feats") ap { it.mapMI { parseFeat(it) } } )
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -79,9 +80,9 @@ fun parseFighter(yamlValue : YamlValue) : YamlParser<Character> = when (yamlValu
 
 fun parseWizard(yamlValue : YamlValue) : YamlParser<Character> = when (yamlValue)
 {
-    is YamlDict -> effApply(::Wizard,
-                            parseCharacterData(yamlValue),
-                            yamlValue.valueList("spells") ap { it.mapMI { parseSpell(it) } } )
+    is YamlDict -> apply(::Wizard,
+                         parseCharacterData(yamlValue),
+                         yamlValue.valueList("spells") ap { it.mapMI { parseSpell(it) } } )
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -105,13 +106,13 @@ fun parseLanguage(yamlValue : YamlValue) : YamlParser<String> = when (yamlValue)
 
 fun parseAbilityScores(yamlValue : YamlValue) : YamlParser<AbilityScores> = when (yamlValue)
 {
-    is YamlDict -> effApply(::AbilityScores,
-                            yamlValue.integer("str"),
-                            yamlValue.integer("dex"),
-                            yamlValue.integer("con"),
-                            yamlValue.integer("int"),
-                            yamlValue.integer("wis"),
-                            yamlValue.integer("cha"))
+    is YamlDict -> apply(::AbilityScores,
+                         yamlValue.integer("str"),
+                         yamlValue.integer("dex"),
+                         yamlValue.integer("con"),
+                         yamlValue.integer("int"),
+                         yamlValue.integer("wis"),
+                         yamlValue.integer("cha"))
     else         -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -123,13 +124,11 @@ fun parseAbilityScores(yamlValue : YamlValue) : YamlParser<AbilityScores> = when
 
 fun parseSpell(yamlValue : YamlValue) : YamlParser<Spell> = when (yamlValue)
 {
-    is YamlDict -> {
-        effApply(::Spell,
-                yamlValue.text("name"),
-                yamlValue.integer("level"),
-                yamlValue.maybeText("description"),
-                yamlValue.maybeText("damage"))
-    }
+    is YamlDict -> apply(::Spell,
+                         yamlValue.text("name"),
+                         yamlValue.integer("level"),
+                         yamlValue.maybeText("description"),
+                         yamlValue.maybeText("damage"))
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
@@ -138,11 +137,9 @@ fun parseSpell(yamlValue : YamlValue) : YamlParser<Spell> = when (yamlValue)
 
 fun parseFeat(yamlValue : YamlValue) : YamlParser<Feat> = when (yamlValue)
 {
-    is YamlDict -> {
-        effApply(::Feat,
-                yamlValue.text("name"),
-                yamlValue.long("bonus"))
-    }
+    is YamlDict -> apply(::Feat,
+                         yamlValue.text("name"),
+                         yamlValue.long("bonus"))
     else        -> error(UnexpectedTypeFound(YamlType.DICT, yamlType(yamlValue), yamlValue.path))
 }
 
