@@ -4,16 +4,20 @@
 Culebra is a Yaml serialization library for Kotlin built using
 the [snakeyaml] library. It provides a flexible interface for
 serializing Kotlin values to and from Yaml with the help of the
-Applicative / Monadic parsing style. It is heavily influenced by [aeson].
+Applicative / Monadic parsing style. It is heavily influenced by [aeson] Haskell library.
 
-**Flexible** It allows you to map your data types to and from Yaml freely, with 
+### Why Use Culebra?
+
+ * **Flexible** Map your data types to and from any Yaml format with 
            no constraints on the shape of the data or the names of the fields.
            
-**Compositional** You can easily combine parsers for different datatypes into 
+ * **Compositional** You can easily combine parsers for different datatypes into 
         larger parsers in order to maximize code reuse.
 
-**Compositional** You can easily combine parsers for different datatypes into 
-        larger parsers in order to maximize code reuse.
+ * **Sum Types** Culebra supports de/serialization of sum types in whichever way 
+       you want to represent them.
+
+### Tutorial Contents
 
 - [Installation](#installation)
 - [Usage](#usage)
