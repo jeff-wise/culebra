@@ -16,9 +16,6 @@ functional programming paradigm. It's heavily inspired by
 <br/>
 <br/>
 <br/>
-<br/>
-<br/>
-<br/>
 
 
 # Culebra
