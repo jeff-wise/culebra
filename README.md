@@ -1,4 +1,26 @@
 
+## :speech_balloon: Deprecated Side-Project
+
+This library was created for use with my
+[TaleTable](https://github.com/jeff-wise/taletable-legacy) project
+and also for use with the
+[Lulo](https://github.com/jeff-wise/lulo-haskell) library as most
+configuration was handled with YAML. I wanted a straight-forward
+code-level (no reflection, annotations, etc...) library that also
+supported sum types and could evolve to work well within the
+functional programming paradigm. It's heavily inspired by
+[Aeson](https://hackage.haskell.org/package/aeson).
+
+**View the original README below** :arrow_heading_down:
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+
 # Culebra
 
 Culebra is a Yaml serialization library for Kotlin built using
